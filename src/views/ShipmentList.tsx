@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Badge, Button, Input, Select, Table, Tag } from 'antd'
 import { useShipmentStore } from '../store/useShipmentStore'
 import { loadShipmentSnapshot } from '../services/api'
+import { isOpenDeviation } from '../types'
 import type { Shipment, ShipmentStatus } from '../types'
 
 const statusColor = (status: ShipmentStatus) => status === '已放行' ? 'success' : status === '已拒绝' ? 'error' : status === '待放行' ? 'warning' : 'processing'
@@ -16,6 +17,7 @@ export function ShipmentList() {
     const text = `${item.id} ${item.product} ${item.batch} ${item.route} ${item.containerId}`.toLowerCase()
     return (!state.keyword || text.includes(state.keyword.toLowerCase())) && (state.status === '全部' || item.status === state.status)
   }), [state.shipments, state.keyword, state.status])
+  const queuedHandovers = state.shipments.flatMap((item) => item.handovers).filter((item) => item.status === '排队中')
   const columns = [
     { title: '任务编号', dataIndex: 'id', width: 150 },
     { title: '货物', dataIndex: 'product', render: (value: string, row: Shipment) => <div><strong>{value}</strong><small className="cell-sub">{row.batch}</small></div> },
@@ -23,6 +25,7 @@ export function ShipmentList() {
     { title: '温控箱', dataIndex: 'containerId', width: 115 },
     { title: '范围', render: (_: unknown, row: Shipment) => `${row.tempMin} - ${row.tempMax} ℃`, width: 100 },
     { title: '状态', dataIndex: 'status', width: 100, render: (value: ShipmentStatus) => <Tag color={statusColor(value)}>{value}</Tag> },
+    { title: '交接版本', dataIndex: 'handoverVersion', width: 110, render: (value: number, row: Shipment) => <span>V{value}{row.handovers.some((item) => item.status === '排队中') && <Tag color="error" className="gap-tag">排队</Tag>}{row.handovers.some((item) => item.status === '待确认') && <Tag color="processing" className="gap-tag">待确认</Tag>}</span> },
     { title: '版本', dataIndex: 'version', width: 65, render: (value: number) => `V${value}` },
     { title: '', width: 80, render: (_: unknown, row: Shipment) => <Button type="link" onClick={() => navigate(`/shipments/${row.id}`)}>打开</Button> }
   ]
@@ -31,7 +34,8 @@ export function ShipmentList() {
     <div className="metrics">
       <article><span>运输任务</span><strong>{state.shipments.length}</strong><small>PVG与PEK始发</small></article>
       <article><span>待放行</span><strong>{state.shipments.filter((item) => item.status === '待放行').length}</strong><small>需完成证据核验</small></article>
-      <article><span>未关闭偏差</span><strong>{state.deviations.filter((item) => item.status !== '已关闭').length}</strong><small>温度超限调查</small></article>
+      <article><span>未关闭偏差</span><strong>{state.deviations.filter(isOpenDeviation).length}</strong><small>温度超限调查</small></article>
+      <article><span>交接排队</span><strong>{queuedHandovers.length}</strong><small>{queuedHandovers.length > 0 ? `容量缺口${queuedHandovers.reduce((sum, item) => sum + item.capacityGap, 0).toFixed(1)}m³` : '备用箱容量充足'}</small></article>
       <article><span>待核验文件</span><strong>{state.shipments.flatMap((item) => item.evidence).filter((item) => !item.verified).length}</strong><small>不得直接放行</small></article>
     </div>
     <div className="toolbar">

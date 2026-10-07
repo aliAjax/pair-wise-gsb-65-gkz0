@@ -1,6 +1,7 @@
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { Badge, Button } from 'antd'
 import { useShipmentStore } from './store/useShipmentStore'
+import { isOpenDeviation } from './types'
 import { ShipmentList } from './views/ShipmentList'
 import { ShipmentDetail } from './views/ShipmentDetail'
 import { DeviationWorkbench } from './views/DeviationWorkbench'
@@ -10,7 +11,7 @@ const nav = [['/', '运输放行'], ['/deviations', '偏差调查'], ['/audit', 
 
 function Shell() {
   const reset = useShipmentStore((state) => state.reset)
-  const open = useShipmentStore((state) => state.deviations.filter((item) => item.status !== '已关闭').length)
+  const open = useShipmentStore((state) => state.deviations.filter(isOpenDeviation).length)
   return <div className="app-shell">
     <aside>
       <div className="brand"><b>温</b><div><strong>航空温控放行台</strong><small>温度证据链与偏差闭环</small></div></div>
